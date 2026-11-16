@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Čas serveru – přepínatelné designy</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Montserrat:wght@500;700&family=Luckiest+Guy&family=Fredoka:wght@500;700&display=swap');
+
+    :root { --gold: #ffd700; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: background 0.4s ease;
+    }
+    .app {
+      position: relative;
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px 32px;
+    }
+    .hint {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.35);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
+    .hint kbd {
+      font: inherit;
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin: 0 2px;
+      background: rgba(255,255,255,0.85);
+      color: #222;
+      border: 1px solid rgba(0,0,0,0.15);
+    }
+    .scene { position: relative; display: flex; flex-direction: column; align-items: center; }
+    .stage { position: relative; padding: 34px; }
+    .clock {
+      width: min(72vw, 360px);
+      height: min(72vw, 360px);
+      border-radius: 50%;
+      position: relative;
+      overflow: hidden;
+    }
+    .hand { position: absolute; left: 50%; bottom: 50%; transform-origin: bottom center; transform: translateX(-50%) rotate(0deg); border-radius: 999px; }
+    .center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 50%; z-index: 6; }
+    .tick, .number { position: absolute; left: 50%; top: 50%; }
+    .number { transform: translate(-50%, -50%); user-select: none; z-index: 5; font-weight: 700; }
+    .panel { margin-top: 1.1rem; text-align: center; padding: 0.7rem 1.2rem; border-radius: 999px; }
+    .digital { font-family: 'Montserrat', sans-serif; font-weight: 700; letter-spacing: 0.08em; }
+    .title { margin: 0 0 0.3rem; text-align: center; }
+    .subtitle { margin: 0 0 1rem; text-align: center; font-family: 'Montserrat', sans-serif; letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.8rem; }
+
+    /* ========== THEME: GLAMOUR (pink leopard + gold jewelry) ========== */
+    body.theme-glamour {
+      color: #4a1230;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(255,255,255,0.35), transparent 20%),
+        radial-gradient(circle at 85% 15%, rgba(255,215,0,0.18), transparent 22%),
+        radial-gradient(circle at 50% 85%, rgba(255,79,163,0.25), transparent 30%),
+        linear-gradient(135deg, #2b0016 0%, #5a0030 35%, #8a004a 70%, #2b0016 100%);
+    }
+    body.theme-glamour .app::before {
+      content: ""; position: fixed; inset: 0; opacity: 0.22; pointer-events: none;
+      background-color: #f6b7d8;
+      background-image:
+        radial-gradient(ellipse 22px 14px at 20px 30px, rgba(59,29,18,0.95) 0 45%, transparent 55%),
+        radial-gradient(ellipse 16px 10px at 28px 24px, rgba(122,62,29,0.9) 0 40%, transparent 55%),
+        radial-gradient(ellipse 24px 16px at 80px 70px, rgba(59,29,18,0.95) 0 45%, transparent 55%),
+        radial-gradient(ellipse 18px 12px at 90px 62px, rgba(122,62,29,0.85) 0 40%, transparent 55%),
+        radial-gradient(ellipse 20px 13px at 140px 35px, rgba(59,29,18,0.9) 0 45%, transparent 55%),
+        radial-gradient(ellipse 14px 9px at 132px 42px, rgba(122,62,29,0.85) 0 40%, transparent 55%),
+        radial-gradient(ellipse 26px 17px at 40px 120px, rgba(59,29,18,0.92) 0 45%, transparent 55%),
+        radial-gradient(ellipse 22px 14px at 120px 130px, rgba(59,29,18,0.92) 0 45%, transparent 55%);
+      background-size: 180px 160px; mix-blend-mode: screen;
+    }
+    body.theme-glamour .hint { background: rgba(255,209,232,0.85); color: #5a0030; }
+    body.theme-glamour .title {
+      font-family: 'Playfair Display', serif; font-size: clamp(1.8rem,4vw,2.8rem); font-weight: 900;
+      background: linear-gradient(90deg, #fff2b3, #ffd700, #fff, #ffd700, #fff2b3); background-size: 200% 100%;
+      -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 4s linear infinite;
+    }
+    @keyframes shine { to { background-position: 200% 0; } }
+    body.theme-glamour .subtitle { color: #ffe6f4; text-shadow: 0 0 10px rgba(255,79,163,0.5); }
+    body.theme-glamour .jewelry-ring {
+      position: absolute; inset: -10px; border-radius: 50%; border: 10px solid transparent;
+      background: linear-gradient(#3a0020,#3a0020) padding-box,
+        repeating-conic-gradient(from 0deg,#ffd700 0 8deg,#8a6b1f 8deg 10deg,#fff2b3 10deg 16deg,#d4af37 16deg 18deg) border-box;
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.15), 0 0 25px rgba(255,215,0,0.45), 0 18px 40px rgba(0,0,0,0.4);
+      z-index: 1;
+    }
+    body.theme-glamour .gems { position: absolute; inset: -10px; border-radius: 50%; pointer-events: none; z-index: 2; }
+    body.theme-glamour .gem {
+      position: absolute; width: 18px; height: 18px; left: 50%; top: 50%; margin: -9px;
+      background: radial-gradient(circle at 30% 30%, #fff, #ff3fa8 35%, #7a003f 80%);
+      border: 2px solid #ffd700; border-radius: 4px; transform: rotate(45deg);
+      box-shadow: 0 0 10px rgba(255,79,163,0.8), 0 0 18px rgba(255,215,0,0.5);
+    }
+    body.theme-glamour .clock {
+      border: 8px solid #d4af37; z-index: 3;
+      box-shadow: 0 0 0 5px rgba(255,241,184,0.8), 0 0 0 12px rgba(212,175,55,0.45), 0 25px 60px rgba(0,0,0,0.5), inset 0 0 40px rgba(74,0,40,0.25);
+      background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.55), transparent 28%), linear-gradient(160deg, #ffd9ec 0%, #ffb6d9 40%, #ff8fc7 100%);
+    }
+    body.theme-glamour .clock::before {
+      content: ""; position: absolute; inset: 0; opacity: 0.55; background-color: #f7bfdc;
+      background-image:
+        radial-gradient(ellipse 34px 22px at 18% 22%, rgba(59,29,18,0.95) 0 42%, transparent 52%),
+        radial-gradient(ellipse 22px 14px at 22% 18%, rgba(122,62,29,0.9) 0 40%, transparent 52%),
+        radial-gradient(ellipse 38px 24px at 78% 28%, rgba(59,29,18,0.92) 0 42%, transparent 52%),
+        radial-gradient(ellipse 36px 23px at 30% 72%, rgba(59,29,18,0.93) 0 42%, transparent 52%),
+        radial-gradient(ellipse 40px 26px at 72% 74%, rgba(59,29,18,0.94) 0 42%, transparent 52%),
+        radial-gradient(ellipse 30px 20px at 50% 45%, rgba(59,29,18,0.9) 0 42%, transparent 52%);
+      mix-blend-mode: multiply;
+    }
+    body.theme-glamour .clock::after {
+      content: ""; position: absolute; inset: 18px; border-radius: 50%; border: 3px solid rgba(255,215,0,0.85);
+      box-shadow: inset 0 0 20px rgba(255,215,0,0.25), 0 0 12px rgba(212,175,55,0.4); pointer-events: none;
+    }
+    body.theme-glamour .hand.hour { width: 12px; height: 24%; background: linear-gradient(to top,#8a6b1f,#ffd700,#fff2b3); box-shadow: 0 0 10px rgba(212,175,55,0.7); z-index:3; }
+    body.theme-glamour .hand.minute { width: 8px; height: 34%; background: linear-gradient(to top,#a00050,#ff4fa3,#ffd6ec); box-shadow: 0 0 12px rgba(255,79,163,0.6); z-index:2; }
+    body.theme-glamour .hand.second { width: 3px; height: 40%; background: linear-gradient(to top,#8a6b1f,#fff4bf,#fff); box-shadow: 0 0 10px rgba(255,255,255,0.9); z-index:4; }
+    body.theme-glamour .center { width: 26px; height: 26px; background: radial-gradient(circle at 30% 30%,#fff,#ffd700 40%,#8a6b1f); border: 3px solid #fff8d6; box-shadow: 0 0 0 3px rgba(255,79,163,0.35), 0 0 18px rgba(255,215,0,0.8); }
+    body.theme-glamour .tick { width: 4px; height: 16px; background: linear-gradient(to bottom,#ffd700,#8a6b1f); border-radius:4px; transform-origin: center center; }
+    body.theme-glamour .tick.minor { width:2px; height:8px; background: rgba(255,255,255,0.85); }
+    body.theme-glamour .number { font-family:'Playfair Display',serif; font-size: clamp(1rem,2.5vw,1.5rem); color:#fffdf4; text-shadow: 0 1px 0 #8a6b1f, 0 0 8px rgba(212,175,55,0.8); }
+    body.theme-glamour .panel { background: linear-gradient(135deg, rgba(255,209,232,0.95), rgba(255,143,199,0.9)); border: 2px solid #ffd700; box-shadow: 0 0 0 3px rgba(255,255,255,0.35) inset, 0 10px 25px rgba(0,0,0,0.25); }
+    body.theme-glamour .digital { color:#6b0038; }
+
+    /* ========== THEME: BIKINI (SpongeBob & Patrick still life) ========== */
+    body.theme-bikini {
+      color: #083b4a;
+      background: linear-gradient(to bottom, #7fe9ff 0%, #35c6ff 35%, #1fa2d6 55%, #2ec4b6 56%, #f7e7a9 70%, #e7c97a 100%);
+    }
+    body.theme-bikini .app::before {
+      content: ""; position: fixed; inset: 0; pointer-events: none;
+      background-image:
+        radial-gradient(circle at 10% 20%, rgba(255,255,255,0.5) 0 18px, transparent 19px),
+        radial-gradient(circle at 14% 28%, rgba(255,255,255,0.35) 0 10px, transparent 11px),
+        radial-gradient(circle at 85% 18%, rgba(255,255,255,0.45) 0 14px, transparent 15px),
+        radial-gradient(circle at 80% 30%, rgba(255,255,255,0.3) 0 8px, transparent 9px),
+        radial-gradient(circle at 20% 75%, rgba(255,255,255,0.2) 0 6px, transparent 7px),
+        radial-gradient(circle at 75% 80%, rgba(255,255,255,0.2) 0 5px, transparent 6px);
+      opacity: 0.8;
+    }
+    body.theme-bikini .hint { background: rgba(255, 247, 170, 0.9); color: #0b4b5f; border-color: rgba(11,75,95,0.2); }
+    body.theme-bikini .title {
+      font-family: 'Luckiest Guy', cursive; font-size: clamp(2rem,5vw,3.2rem); letter-spacing: 0.03em;
+      color: #fff25c; text-shadow: 3px 3px 0 #d97706, -2px -2px 0 #0ea5b7, 0 6px 0 rgba(0,0,0,0.12);
+    }
+    body.theme-bikini .subtitle { color: #064e63; font-weight: 700; }
+    body.theme-bikini .stage { padding: 20px 20px 10px; }
+    body.theme-bikini .jewelry-ring, body.theme-bikini .gems { display: none; }
+    body.theme-bikini .clock {
+      border: 10px solid #8b5a2b; z-index: 3;
+      box-shadow: 0 0 0 6px #f59e0b, 0 18px 35px rgba(0,0,0,0.25), inset 0 0 30px rgba(0,0,0,0.08);
+      background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.6), transparent 25%), linear-gradient(180deg, #bff3ff 0%, #e8fbff 100%);
+    }
+    body.theme-bikini .clock::before {
+      content: ""; position: absolute; left: 8%; right: 8%; bottom: 0; height: 28%;
+      background: linear-gradient(to top, #d9b36c, #f3d89a); border-top-left-radius: 50% 30%; border-top-right-radius: 50% 30%; opacity: 0.95;
+    }
+    body.theme-bikini .clock::after {
+      content: ""; position: absolute; width: 26px; height: 26px; right: 22%; top: 18%; border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #fff, #ffb6d9 45%, #ff69b4); box-shadow: -18px 8px 0 -4px #7dd3fc, 30px 20px 0 -8px #fde68a;
+      opacity: 0.8; pointer-events: none;
+    }
+    body.theme-bikini .hand.hour { width: 12px; height: 22%; background: linear-gradient(to top,#92400e,#f59e0b,#fde68a); box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index:3; border: 1px solid #78350f; }
+    body.theme-bikini .hand.minute { width: 8px; height: 32%; background: linear-gradient(to top,#065f46,#34d399,#d1fae5); box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index:2; border: 1px solid #064e3b; }
+    body.theme-bikini .hand.second { width: 3px; height: 38%; background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.6); z-index:4; }
+    body.theme-bikini .center { width: 22px; height: 22px; background: radial-gradient(circle at 30% 30%,#fff,#fde047 45%,#f59e0b); border: 3px solid #92400e; }
+    body.theme-bikini .tick { width: 4px; height: 14px; background: #0f766e; border-radius: 4px; transform-origin: center center; }
+    body.theme-bikini .tick.minor { width: 2px; height: 7px; background: rgba(15,118,110,0.5); }
+    body.theme-bikini .number { font-family: 'Fredoka', sans-serif; font-size: clamp(1rem,2.4vw,1.4rem); color:#083344; text-shadow: 0 1px 0 #fff; }
+    body.theme-bikini .panel { background: rgba(255,255,255,0.75); border: 3px solid #0ea5b7; box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+    body.theme-bikini .digital { color:#064e63; }
+
+    /* Bikini bottom still life characters */
+    .still-life { display: none; position: relative; width: min(92vw, 720px); height: 140px; margin-top: -10px; pointer-events: none; }
+    body.theme-bikini .still-life { display: block; }
+    .ground {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 70px;
+      background: linear-gradient(to top, #caa45a, #efd28f); border-radius: 50% 50% 0 0 / 30px 30px 0 0;
+      box-shadow: inset 0 8px 0 rgba(255,255,255,0.2);
+    }
+    .flower { position: absolute; bottom: 45px; width: 34px; height: 34px; border-radius: 50%; }
+    .flower::before, .flower::after { content:""; position:absolute; inset:0; border-radius:50%; }
+    .flower { background: #22c55e; box-shadow: 0 0 0 6px #4ade80, 0 0 0 12px #86efac; }
+    .flower::after { inset: 10px; background: #fb923c; box-shadow: 0 0 0 4px #fdba74; }
+    .f1 { left: 8%; transform: scale(0.8); }
+    .f2 { right: 10%; bottom: 52px; transform: scale(0.7); filter: hue-rotate(40deg); }
+    .spongebob, .patrick {
+      position: absolute; bottom: 18px; display: flex; flex-direction: column; align-items: center;
+      font-family: 'Fredoka', sans-serif; font-weight: 700;
+    }
+    .spongebob { left: 50%; transform: translateX(-150px); }
+    .patrick { left: 50%; transform: translateX(40px); }
+    .sb-body {
+      width: 92px; height: 105px; background: #ffe75a; border: 4px solid #c9a400; border-radius: 10px;
+      position: relative; box-shadow: inset 0 0 0 4px rgba(255,255,255,0.25);
+      background-image: radial-gradient(#e2c100 0 4px, transparent 5px), radial-gradient(#e2c100 0 3px, transparent 4px);
+      background-size: 28px 28px, 22px 22px; background-position: 4px 6px, 16px 18px;
+    }
+    .eyes { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; }
+    .eye { width: 28px; height: 28px; background: #fff; border: 3px solid #333; border-radius: 50%; position: relative; }
+    .eye::after { content:""; position:absolute; width:8px; height:8px; background:#1e90ff; border:2px solid #222; border-radius:50%; top:9px; left:9px; }
+    .sb-mouth { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); width:34px; height:14px; border-bottom:4px solid #a16207; border-radius:0 0 18px 18px; }
+    .sb-teeth { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); display:flex; gap:3px; }
+    .sb-teeth span { width:8px; height:8px; background:#fff; border:1px solid #ccc; }
+    .sb-clothes { position:absolute; bottom:0; left:0; right:0; height:24px; background:#fff; border-top:3px solid #8b5a2b; }
+    .sb-clothes::after { content:""; position:absolute; left:0; right:0; bottom:0; height:10px; background:#7c3aed; }
+    .sb-tie { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); width:0; height:0; border-left:7px solid transparent; border-right:7px solid transparent; border-top:14px solid #ef4444; }
+    .label { margin-top: 4px; font-size: 0.9rem; color: #064e63; text-shadow: 0 1px 0 rgba(255,255,255,0.7); }
+
+    .pat-body {
+      width: 110px; height: 120px; background: #ff9acb; border: 4px solid #d9468f; border-radius: 55% 55% 45% 45% / 60% 60% 40% 40%;
+      position: relative; clip-path: polygon(50% 0%, 72% 18%, 100% 22%, 82% 48%, 88% 100%, 50% 82%, 12% 100%, 18% 48%, 0% 22%, 28% 18%);
+      box-shadow: inset 0 0 0 4px rgba(255,255,255,0.2);
+    }
+    .pat-eye { position:absolute; top:28px; width:20px; height:24px; background:#fff; border:3px solid #333; border-radius:50%; }
+    .pat-eye.left { left:34px; } .pat-eye.right { right:34px; }
+    .pat-eye::after { content:""; position:absolute; width:6px; height:6px; background:#222; border-radius:50%; top:9px; left:6px; }
+    .pat-mouth { position:absolute; top:58px; left:50%; transform:translateX(-50%); width:26px; height:10px; border-bottom:4px solid #9d174d; border-radius:0 0 14px 14px; }
+    .pat-shorts { position:absolute; bottom:6px; left:50%; transform:translateX(-50%); width:64px; height:26px; background:#84cc16; border:3px solid #4d7c0f; border-radius:8px 8px 18px 18px; }
+    .pat-shorts::before { content:""; position:absolute; inset:4px 8px auto 8px; height:8px; background: radial-gradient(#a16207 0 3px, transparent 4px); background-size:12px 12px; opacity:0.8; }
+    .bubbles span { position:absolute; border:2px solid rgba(255,255,255,0.7); border-radius:50%; background: rgba(255,255,255,0.15); }
+
+    .legend { margin-top: 10px; font-family: 'Fredoka', sans-serif; color: #064e63; font-size: 0.95rem; }
+  </style>
+</head>
+<body class="theme-glamour">
+  <div class="app">
+    <div class="hint">Stiskni <kbd>C</kbd> pro přepnutí designu (Glamour / Bikini)</div>
+
+    <div class="scene">
+      <h1 class="title" id="title">Glamour Server Time</h1>
+      <div class="subtitle" id="subtitle">Pink • Leopard • Gold</div>
+
+      <div class="stage">
+        <div class="jewelry-ring"></div>
+        <div class="gems" id="gems"></div>
+        <div class="clock" id="clock" aria-label="Analogové hodiny zobrazující čas serveru">
+          <div class="hand hour" id="hour"></div>
+          <div class="hand minute" id="minute"></div>
+          <div class="hand second" id="second"></div>
+          <div class="center"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="digital" id="time"></div>
+      </div>
+
+      <div class="still-life" aria-hidden="true">
+        <div class="ground"></div>
+        <div class="flower f1"></div>
+        <div class="flower f2"></div>
+        <div class="spongebob">
+          <div class="sb-body">
+            <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+            <div class="sb-mouth"></div>
+            <div class="sb-teeth"><span></span><span></span></div>
+            <div class="sb-clothes"></div>
+            <div class="sb-tie"></div>
+          </div>
+          <div class="label">SpongeBob</div>
+        </div>
+        <div class="patrick">
+          <div class="pat-body">
+            <div class="pat-eye left"></div>
+            <div class="pat-eye right"></div>
+            <div class="pat-mouth"></div>
+            <div class="pat-shorts"></div>
+          </div>
+          <div class="label">Patrik</div>
+        </div>
+        <div class="legend">Zátiší v Zátiší Bikin (Bikini Bottom)</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Počáteční čas ze serveru
+    let serverSecondsTotal = {{ hour }} * 3600 + {{ minute }} * 60 + {{ second }};
+
+    const clock = document.getElementById('clock');
+    const gems = document.getElementById('gems');
+
+    function placeGems() {
+      gems.innerHTML = '';
+      const size = clock.clientWidth || 360;
+      const radius = size / 2 + 28;
+      for (let i = 0; i < 12; i++) {
+        const gem = document.createElement('div');
+        gem.className = 'gem';
+        const angle = (i * 30 - 90) * Math.PI / 180;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        gem.style.transform = `translate(${x}px, ${y}px) rotate(45deg)`;
+        gems.appendChild(gem);
+      }
+    }
+
+    function placeTicksAndNumbers() {
+      clock.querySelectorAll('.tick, .number').forEach(n => n.remove());
+      const size = clock.clientWidth || 360;
+      const tickRadius = size * 0.43;
+      const numRadius = size * 0.33;
+      for (let i = 0; i < 60; i++) {
+        const tick = document.createElement('div');
+        const isHour = i % 5 === 0;
+        tick.className = 'tick' + (isHour ? '' : ' minor');
+        const angle = i * 6;
+        tick.style.transform = `translate(-50%, -50%) rotate(${angle}deg) translateY(-${tickRadius}px)`;
+        clock.appendChild(tick);
+      }
+      for (let n = 1; n <= 12; n++) {
+        const num = document.createElement('div');
+        num.className = 'number';
+        num.textContent = n;
+        const angle = (n * 30) * Math.PI / 180;
+        const x = Math.sin(angle) * numRadius;
+        const y = -Math.cos(angle) * numRadius;
+        num.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+        clock.appendChild(num);
+      }
+    }
+
+    function layout() { placeGems(); placeTicksAndNumbers(); }
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    function update() {
+      const total = ((serverSecondsTotal % 86400) + 86400) % 86400;
+      const h = Math.floor(total / 3600);
+      const m = Math.floor((total % 3600) / 60);
+      const s = total % 60;
+      const secondDeg = s * 6;
+      const minuteDeg = m * 6 + s * 0.1;
+      const hourDeg = (h % 12) * 30 + m * 0.5 + s * (0.5 / 60);
+      document.getElementById('second').style.transform = `translateX(-50%) rotate(${secondDeg}deg)`;
+      document.getElementById('minute').style.transform = `translateX(-50%) rotate(${minuteDeg}deg)`;
+      document.getElementById('hour').style.transform = `translateX(-50%) rotate(${hourDeg}deg)`;
+      document.getElementById('time').textContent = `${pad(h)}:${pad(m)}:${pad(s)} server time`;
+      serverSecondsTotal++;
+    }
+
+    const themes = [
+      { key: 'theme-glamour', title: 'Glamour Server Time', subtitle: 'Pink • Leopard • Gold' },
+      { key: 'theme-bikini', title: 'Bikini Bottom Time', subtitle: 'SpongeBob & Patrik v zátiší' }
+    ];
+    let themeIndex = 0;
+
+    function applyTheme(index) {
+      themeIndex = index;
+      document.body.classList.remove('theme-glamour', 'theme-bikini');
+      document.body.classList.add(themes[index].key);
+      document.getElementById('title').textContent = themes[index].title;
+      document.getElementById('subtitle').textContent = themes[index].subtitle;
+      // layout differs slightly (gems hidden in bikini) so recalc
+      layout();
+    }
+
+    function toggleTheme() {
+      applyTheme((themeIndex + 1) % themes.length);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key && e.key.toLowerCase() === 'c' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        toggleTheme();
+      }
+    });
+
+    applyTheme(0);
+    window.addEventListener('resize', layout);
+    update();
+    setInterval(update, 1000);
+  </script>
+</body>
+</html>
